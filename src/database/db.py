@@ -35,8 +35,8 @@ class ClickHouseClient:
                 logger.info('Executing query...')
                 settings = {
                     'session_id': str(uuid4()),
-                    'session_timeout': 900,
-                    'max_execution_time': 900
+                    'session_timeout': 1200,
+                    'max_execution_time': 1200
                 }
                 result = self.client.query(query, parameters=parameters or {}, settings=settings)
                 column_names = result.column_names
