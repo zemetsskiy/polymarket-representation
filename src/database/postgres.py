@@ -38,7 +38,7 @@ class PostgresClient:
         create_sql = f"""
         CREATE TABLE IF NOT EXISTS {self.TABLE_NAME} (
             id SERIAL PRIMARY KEY,
-            wallet_address VARCHAR(128) NOT NULL,
+            wallet_address VARCHAR(128) NOT NULL UNIQUE,
             positions_count INTEGER DEFAULT 0,
             markets_count INTEGER DEFAULT 0,
             avg_trades_per_position DOUBLE PRECISION DEFAULT 0,
@@ -51,7 +51,8 @@ class PostgresClient:
             last_trade_at TIMESTAMP,
             annual_avg_roi DOUBLE PRECISION DEFAULT 0,
             annual_portfolio_roi DOUBLE PRECISION DEFAULT 0,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );
         CREATE INDEX IF NOT EXISTS idx_smartmoney_pm_wallet ON {self.TABLE_NAME} (wallet_address);
         CREATE INDEX IF NOT EXISTS idx_smartmoney_pm_profit ON {self.TABLE_NAME} (profit_usdc DESC);
@@ -75,15 +76,26 @@ class PostgresClient:
 
         try:
             with self.conn.cursor() as cur:
-                cur.execute("SELECT NOW()")
-                insert_timestamp = cur.fetchone()[0]
-
-                insert_sql = f"""
+                upsert_sql = f"""
                 INSERT INTO {self.TABLE_NAME} (
                     wallet_address, positions_count, markets_count, avg_trades_per_position,
                     profit_usdc, avg_roi, total_returned_usdc, total_invested_usdc, portfolio_roi,
-                    first_trade_at, last_trade_at, annual_avg_roi, annual_portfolio_roi, created_at
+                    first_trade_at, last_trade_at, annual_avg_roi, annual_portfolio_roi
                 ) VALUES %s
+                ON CONFLICT (wallet_address) DO UPDATE SET
+                    positions_count = EXCLUDED.positions_count,
+                    markets_count = EXCLUDED.markets_count,
+                    avg_trades_per_position = EXCLUDED.avg_trades_per_position,
+                    profit_usdc = EXCLUDED.profit_usdc,
+                    avg_roi = EXCLUDED.avg_roi,
+                    total_returned_usdc = EXCLUDED.total_returned_usdc,
+                    total_invested_usdc = EXCLUDED.total_invested_usdc,
+                    portfolio_roi = EXCLUDED.portfolio_roi,
+                    first_trade_at = EXCLUDED.first_trade_at,
+                    last_trade_at = EXCLUDED.last_trade_at,
+                    annual_avg_roi = EXCLUDED.annual_avg_roi,
+                    annual_portfolio_roi = EXCLUDED.annual_portfolio_roi,
+                    updated_at = NOW()
                 """
 
                 values = []
@@ -108,14 +120,10 @@ class PostgresClient:
                     ))
 
                 execute_values(
-                    cur, insert_sql, values,
-                    template="(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())"
+                    cur, upsert_sql, values,
+                    template="(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
                 )
-                logger.info(f'Inserted {len(metrics):,} fresh smart money records')
-
-                cur.execute(f"DELETE FROM {self.TABLE_NAME} WHERE created_at < %s", (insert_timestamp,))
-                deleted_count = cur.rowcount
-                logger.info(f'Deleted {deleted_count:,} old records')
+                logger.info(f'Upserted {len(metrics):,} smart money records')
 
             self.conn.commit()
             return len(metrics)

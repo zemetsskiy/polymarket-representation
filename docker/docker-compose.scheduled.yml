@@ -17,6 +17,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.scheduled
     container_name: polymarket-smart-money-debug
+    entrypoint: ["python", "run.py"]
     env_file:
       - ../.env
     volumes:
