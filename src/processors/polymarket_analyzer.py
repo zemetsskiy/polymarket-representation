@@ -174,14 +174,14 @@ class PolymarketSmartMoneyAnalyzer:
             COUNT(DISTINCT market_id) AS markets_count,
             AVG(operations_count) AS avg_trades_per_position,
             SUM(absolute_profit) / 1e6 AS profit_usdc,
-            AVG(relative_profit) AS avg_roi,
+            AVG(relative_profit) * 100 AS avg_roi,
             SUM(total_gained) / 1e6 AS total_returned_usdc,
             SUM(total_spent) / 1e6 AS total_invested_usdc,
-            if(total_invested_usdc = 0, 0, total_returned_usdc / total_invested_usdc) AS portfolio_roi,
+            if(total_invested_usdc = 0, 0, (total_returned_usdc / total_invested_usdc) * 100) AS portfolio_roi,
             MIN(day_enter) AS first_trade_at,
             MAX(day_exit) AS last_trade_at,
-            pow(avg_roi, 365 / dateDiff('day', first_trade_at, last_trade_at)) AS annual_avg_roi,
-            pow(portfolio_roi, 365 / dateDiff('day', first_trade_at, last_trade_at)) AS annual_portfolio_roi
+            pow(avg_roi / 100, 365 / dateDiff('day', first_trade_at, last_trade_at)) * 100 AS annual_avg_roi,
+            pow(portfolio_roi / 100, 365 / dateDiff('day', first_trade_at, last_trade_at)) * 100 AS annual_portfolio_roi
         FROM user_profits_by_tokens
         GROUP BY user_id
         )
