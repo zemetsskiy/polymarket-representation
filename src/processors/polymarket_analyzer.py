@@ -28,56 +28,23 @@ class PolymarketSmartMoneyAnalyzer:
             SELECT
                 splitByChar('_', id)[1] as id_,
                 timestamp,
-                maker AS user_id,
-                taker AS agent,
-                maker_amount_filled AS usdc_amount,
-                taker_amount_filled AS token_amount,
-                maker_asset_id AS asset_in,
-                taker_asset_id AS asset_out
+                if(idx = 1, maker, taker) AS user_id,
+                if(idx = 1, taker, maker) AS agent,
+                if(idx = 1,
+                   if(maker_asset_id = '0', maker_amount_filled, taker_amount_filled),
+                   if(taker_asset_id = '0', taker_amount_filled, maker_amount_filled)
+                ) AS usdc_amount,
+                if(idx = 1,
+                   if(maker_asset_id = '0', taker_amount_filled, maker_amount_filled),
+                   if(taker_asset_id = '0', maker_amount_filled, taker_amount_filled)
+                ) AS token_amount,
+                if(idx = 1, maker_asset_id, taker_asset_id) AS asset_in,
+                if(idx = 1, taker_asset_id, maker_asset_id) AS asset_out,
+                if(asset_in = '0', asset_out, asset_in) AS token_id
             FROM polymarket.orders
-            WHERE is_deleted = 0 AND maker_asset_id = '0'
-
-            UNION ALL
-
-            SELECT
-                splitByChar('_', id)[1] as id_,
-                timestamp,
-                maker AS user_id,
-                taker AS agent,
-                taker_amount_filled AS usdc_amount,
-                maker_amount_filled AS token_amount,
-                maker_asset_id AS asset_in,
-                taker_asset_id AS asset_out
-            FROM polymarket.orders
-            WHERE is_deleted = 0 AND taker_asset_id = '0'
-
-            UNION ALL
-
-            SELECT
-                splitByChar('_', id)[1] as id_,
-                timestamp,
-                taker AS user_id,
-                maker AS agent,
-                taker_amount_filled AS usdc_amount,
-                maker_amount_filled AS token_amount,
-                taker_asset_id AS asset_in,
-                maker_asset_id AS asset_out
-            FROM polymarket.orders
-            WHERE is_deleted = 0 AND taker_asset_id = '0'
-
-            UNION ALL
-
-            SELECT
-                splitByChar('_', id)[1] as id_,
-                timestamp,
-                taker AS user_id,
-                maker AS agent,
-                maker_amount_filled AS usdc_amount,
-                taker_amount_filled AS token_amount,
-                taker_asset_id AS asset_in,
-                maker_asset_id AS asset_out
-            FROM polymarket.orders
-            WHERE is_deleted = 0 AND maker_asset_id = '0'
+            ARRAY JOIN [1, 2] AS idx
+            WHERE is_deleted = 0
+              AND (maker_asset_id = '0' OR taker_asset_id = '0')
         ),
         market_operations AS (
             SELECT
@@ -100,13 +67,10 @@ class PolymarketSmartMoneyAnalyzer:
                     WHEN ut.asset_in = '0' THEN -ut.usdc_amount
                     ELSE ut.usdc_amount
                 END AS usdc_balance_change,
-                CASE
-                    WHEN ut.asset_out = '0' THEN ut.asset_in
-                    ELSE ut.asset_out
-                END AS token_id
+                ut.token_id
             FROM user_trades ut
             INNER JOIN market_tokens mt
-                ON (ut.asset_in = mt.token_id OR ut.asset_out = mt.token_id)
+                ON ut.token_id = mt.token_id
         ),
         market_operations_correct as (
         SELECT
