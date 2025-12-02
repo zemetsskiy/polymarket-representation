@@ -1,0 +1,31 @@
+services:
+  polymarket-smart-money-worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.scheduled
+    container_name: polymarket-smart-money-worker
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    volumes:
+      - ../logs:/app/logs
+    networks:
+      - docker_token-network
+
+  polymarket-smart-money-debug:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.scheduled
+    container_name: polymarket-smart-money-debug
+    env_file:
+      - ../.env
+    volumes:
+      - ../logs:/app/logs
+    networks:
+      - docker_token-network
+    profiles:
+      - debug
+
+networks:
+  docker_token-network:
+    external: true
