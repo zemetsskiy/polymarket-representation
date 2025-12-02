@@ -2,8 +2,8 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/bin:/bin
 
-# Hourly refresh of top 10k Polymarket smart money users (every hour at :30)
-30 * * * * cd /app && /usr/local/bin/python worker_scheduled.py polymarket_smart_money_hourly >> /var/log/cron.log 2>&1
+# Refresh top 10k Polymarket smart money users every 3 hours
+0 */3 * * * cd /app && /usr/local/bin/python worker_scheduled.py polymarket_smart_money_hourly >> /var/log/cron.log 2>&1
 
 # Daily full refresh of 50k Polymarket smart money users (at 01:00 UTC)
 0 1 * * * cd /app && /usr/local/bin/python worker_scheduled.py polymarket_smart_money_daily >> /var/log/cron.log 2>&1
