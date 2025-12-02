@@ -20,7 +20,8 @@ class ClickHouseClient:
                 port=Config.CLICKHOUSE_PORT,
                 username=Config.CLICKHOUSE_USER,
                 password=Config.CLICKHOUSE_PASSWORD,
-                database=Config.CLICKHOUSE_DATABASE
+                database=Config.CLICKHOUSE_DATABASE,
+                send_receive_timeout=1200
             )
             logger.info(f'Connected to ClickHouse at {Config.CLICKHOUSE_HOST}:{Config.CLICKHOUSE_PORT}')
         except Exception as e:
