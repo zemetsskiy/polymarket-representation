@@ -59,9 +59,27 @@ class PostgresClient:
         CREATE INDEX IF NOT EXISTS idx_smartmoney_pm_roi ON {self.TABLE_NAME} (portfolio_roi DESC);
         CREATE INDEX IF NOT EXISTS idx_smartmoney_pm_created ON {self.TABLE_NAME} (created_at DESC);
         """
+
+        # Ensure the unique constraint exists on existing tables
+        constraint_sql = f"""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint
+                WHERE conname = '{self.TABLE_NAME}_wallet_address_key'
+                AND conrelid = '{self.TABLE_NAME}'::regclass
+            ) THEN
+                ALTER TABLE {self.TABLE_NAME}
+                ADD CONSTRAINT {self.TABLE_NAME}_wallet_address_key
+                UNIQUE (wallet_address);
+            END IF;
+        END $$;
+        """
+
         try:
             with self.conn.cursor() as cur:
                 cur.execute(create_sql)
+                cur.execute(constraint_sql)
             self.conn.commit()
             logger.info(f'Ensured table {self.TABLE_NAME} exists')
         except Exception as e:
